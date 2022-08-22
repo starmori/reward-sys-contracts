@@ -4,6 +4,7 @@ coverage
 coverage.json
 typechain
 typechain-types
+node_modules.rar
 
 #Hardhat files
 cache
