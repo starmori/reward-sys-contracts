@@ -13,12 +13,27 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
 
     string private _baseTokenURI;
     string[4] public dVoucherTokenURIs;
-    mapping ( uint256 => address ) public minter;
-
-    mapping ( uint256 => uint8 ) private tokenNominals; // Map the nominal for each tokenId. Nominal : 1-Bronze, 2-Silver, 3-Gold, 4-Platinum
+    
+    struct DVoucherInfo {
+        uint8 nominal;
+        address minter;
+        bool partedInClass;
+        bool partedInMega;
+    }
+    mapping ( uint256 => DVoucherInfo ) public tokenInfo; // Map the nominal for each tokenId. Nominal : 1-Bronze, 2-Silver, 3-Gold, 4-Platinum
     mapping ( uint8 => string ) private nominalNames; // Map the name for each nominal
     mapping ( uint8 => uint256 ) public nominalCount; // Map the number of tokens per nominal
     mapping ( uint8 => uint256 ) public nominalBurnCount; // Map the number of tokens burnt per nominal
+
+    event DVoucherMinted(uint256 tokenId, uint8 nominal, address _to);
+
+    bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
+
+    // Modifier for minting roles
+    modifier onlyMinter() {
+        require(hasRole(MINTER_ROLE, _msgSender()), "Not a minting role");
+        _;
+    }
 
     // Modifier for admin roles
     modifier onlyOwner() {
@@ -32,7 +47,7 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
     }
 
     function getNominal( uint256 _tokenId ) external view returns (uint8) {
-        return tokenNominals[_tokenId];
+        return tokenInfo[_tokenId].nominal;
     }
 
     function getNominalName( uint8 _nominal ) external view returns (string memory) {
@@ -40,7 +55,7 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
     }
 
     function getNominalNameOfTokenId( uint256 _tokenId ) external view returns (string memory) {
-        uint8 nominal = tokenNominals[_tokenId];
+        uint8 nominal = tokenInfo[_tokenId].nominal;
         return nominalNames[nominal];
     }
 
@@ -60,28 +75,37 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
         address _to,
         uint8 _nominal,
         uint256 amount
-    ) external onlyOwner {
+    ) external onlyMinter {
         require( _nominal > 0 && _nominal < 5, "DVoucher : Nominal must be less than 5" );
         
         for(uint256 i = 0; i < amount; i ++) {
             uint256 newId = _tokenIdTracker.current();
             _tokenIdTracker.increment();
 
-            tokenNominals[newId] = _nominal;
+            DVoucherInfo storage info = tokenInfo[newId];
+            info.nominal = _nominal;
             nominalCount[_nominal] = nominalCount[_nominal] + 1;
-            minter[newId] = msg.sender;
+            info.minter = msg.sender;
 
             _mint( _to, newId );
             _setTokenURI( newId, dVoucherTokenURIs[_nominal - 1] );
+
+            emit DVoucherMinted(newId, _nominal, _to);
         }
     }
 
     function tokenMinter( uint256 tokenId ) public view returns ( address ) {
-        return minter[tokenId];
+        return tokenInfo[tokenId].minter;
     }
 
     function tokenURI( uint256 tokenId ) public view override( ERC721, ERC721URIStorage ) returns ( string memory ) {
         return ERC721URIStorage.tokenURI(tokenId);
+    }
+
+    function setParticipateInfo(uint256 _tokenId, bool _partedInClass, bool _partedInMega ) external onlyMinter {
+        DVoucherInfo storage info = tokenInfo[_tokenId];
+        info.partedInClass = _partedInClass;
+        info.partedInMega = _partedInMega;
     }
 
     function setDVoucherTokenURIs( string[4] calldata _dVoucherTokenURIs ) external onlyOwner {
@@ -89,6 +113,11 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
         dVoucherTokenURIs[1] = _dVoucherTokenURIs[1];
         dVoucherTokenURIs[2] = _dVoucherTokenURIs[2];
         dVoucherTokenURIs[3] = _dVoucherTokenURIs[3];
+    }
+
+    function setMinter( address _minter ) external onlyOwner {
+        require( _minter != address(0), "NA" );
+        _setupRole( MINTER_ROLE, _minter );
     }
 
     function _beforeTokenTransfer( address from, address to, uint256 tokenId ) internal virtual override( ERC721, ERC721Enumerable ) {
