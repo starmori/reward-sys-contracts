@@ -25,7 +25,12 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
     mapping ( uint8 => uint256 ) public nominalCount; // Map the number of tokens per nominal
     mapping ( uint8 => uint256 ) public nominalBurnCount; // Map the number of tokens burnt per nominal
 
-    event DVoucherMinted(uint256 tokenId, uint8 nominal, address _to);
+    event DVoucherMinted(
+        uint256 tokenId,
+        uint8 nominal,
+        address _to,
+        uint256 _mintTime
+    );
 
     bytes32 public constant MINTER_ROLE = keccak256("MINTER_ROLE");
 
@@ -90,7 +95,7 @@ contract DVoucherNFT is Context, AccessControlEnumerable, ERC721Enumerable, ERC7
             _mint( _to, newId );
             _setTokenURI( newId, dVoucherTokenURIs[_nominal - 1] );
 
-            emit DVoucherMinted(newId, _nominal, _to);
+            emit DVoucherMinted(newId, _nominal, _to, block.timestamp);
         }
     }
 

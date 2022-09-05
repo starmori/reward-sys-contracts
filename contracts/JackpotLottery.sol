@@ -370,6 +370,16 @@ contract JackpotLottery is ReentrancyGuard, IJackPotLottery, Ownable {
     }
 
     /**
+     * @notice It allows the admin to withdraw tokens sent to the contract
+     * @param _tokenAddress: the address of the token to withdraw
+     * @param _tokenAmount: the number of token amount to withdraw
+     * @dev Only callable by owner.
+     */
+    function withdrawTokens(address _tokenAddress, uint256 _tokenAmount) external onlyOwner {
+        IERC20(_tokenAddress).safeTransfer(address(msg.sender), _tokenAmount);
+    }
+
+    /**
      * @notice Set max number of tickets
      * @dev Only callable by owner
      */
